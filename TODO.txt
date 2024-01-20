@@ -1,0 +1,7 @@
+look into:
+	Cognitive Verifier Pattern
+	Few-shot prompting
+	Game theory Pattern
+	Template Pattern
+	Recipe Pattern
+	How to combine Patterns
