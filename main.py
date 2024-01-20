@@ -44,6 +44,13 @@ def python_handler(llm_response, my_map, agents=None, objs=None):
                             agent.grip_object(obj)
                             if obj[3] == 0:
                                 objs.remove(obj)
+
+        if action_value == "change_status":
+            status = llm_response.ACTION.split("(")[1].split(")")[0]
+            for agent in agents:
+                if agent.name == agent_name:
+                    agent.set_status(my_map, status)
+
     else:
         print("This request is not solvable for the agents operating in a 2D environment")
 
@@ -108,9 +115,11 @@ if __name__ == '__main__':
     R2.setGoal(my_map, R2.position)
     while True:
         step += 1
-        # if step == 2:
+        if step == 2:
+            python_handler(llm_response=llm.llm_test("R2D2 move to (4, 4)"), my_map=my_map, agents=agents, objs=objs)
         #     R1.setGoal(my_map, (4, 4))
-        # if step == 8:
+        if step == 8:
+            python_handler(llm_response=llm.llm_test("C3PO move to (6, 6)"), my_map=my_map, agents=agents, objs=objs)
         #     R2.setGoal(my_map, (6, 6))
         if keyboard.is_pressed('esc'):
             break

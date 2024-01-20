@@ -28,8 +28,9 @@ class OPENAI_llm(object):
         where x is the row index and y is the column index.
 
         These are the following actions the agent can make:
-        move(x, y) which moves the robot to position (x, y)
-        grab which makes the robot grab an object at it's current location
+        - move(x, y) which moves the robot to position (x, y)
+        - grab which makes the robot grab an object at it's current location
+        - change_status(status) changes the status of the agent 
 
         Here are some examples of the task and response:
 
@@ -40,23 +41,32 @@ class OPENAI_llm(object):
         response = TASK: move agent to (2, 1) AGENT: R2D2 ACTION: move(2, 1) SOLVABLE: True
 
         task = C3P0 fetch an orange located at (0, 4)
-        Response = TASK: fetch an orange located at (0, 4) AGENT: C3P0 ACTION: move(0, 4) SOLVABLE: True
+        response = TASK: fetch an orange located at (0, 4) AGENT: C3P0 ACTION: move(0, 4) SOLVABLE: True
         
         Task = R2D2 grab object
-        Response = TASK: grab object AGENT: R2D2 ACTION: grab() SOLVABLE: True
+        response = TASK: grab object AGENT: R2D2 ACTION: grab() SOLVABLE: True
         
         task = what is the capital of france?
         response = SOLVABLE: False
+        
+        task = R2D2 go recharge
+        response = TASK: go to charging station AGENT: R2D2 ACTION: change_status(idle) SOLVABLE: True
+        
+        task = C3PO your work is done
+        response = TASK: go to charging station AGENT: C3PO ACTION: change_status(idle) SOLVABLE: True
         
         You are to always respond in the format {format_instructions}.
         
         {task}.
         """
 
-    def llm_test(self):
+    def llm_test(self, command=None):
         parser = PydanticOutputParser(pydantic_object=task_info)
 
-        task = input("how can i help? \n\n> ")
+        if command:
+            task = command
+        else:
+            task = input("how can i help? \n\n> ")
 
         message = HumanMessagePromptTemplate.from_template(template=self._boot_template)
         chat_prompt = ChatPromptTemplate.from_messages(messages=[message])
