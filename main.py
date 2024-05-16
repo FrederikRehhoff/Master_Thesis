@@ -1,62 +1,42 @@
 from map import Map
 from map import SimpleMapGenerator
-from agent import Agent
-from LLMs import OPENAI_llm, keys
-
+from agent import Agent, robots
+from LLMs import keys, ReAct_model
+from typing import Annotated, List, Tuple, Union
 
 import logging
 import keyboard
+import asyncio
+import threading
+import aioconsole
+import time
+from concurrent.futures import ThreadPoolExecutor
+import getpass
+import os
+import config
 
 
-def dist_func(agent_pos, target_pos):
-    x_dist = abs(target_pos[0] - agent_pos[0])
-    y_dist = abs(target_pos[1] - agent_pos[1])
-    total_dist = x_dist + y_dist
-    return total_dist
+os.environ["OPENAI_API_KEY"] = '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'
+os.environ["LANGCHAIN_API_KEY"] = 'ls__c0f826e0c4514d678c5fdec4a48e6b92'
+os.environ["TAVILY_API_KEY"] = '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'
 
 
-def python_handler(llm_response, my_map, agents=None, objs=None):
-    """TODO:
-        1. Make the LLM bound to the map size
-        2. Implement memory for the LLM"""
-    if agents is None:
-        agents = []
-    if objs is None:
-        objs = []
+def _set_if_undefined(var: str):
+    if not os.environ.get(var):
+        os.environ[var] = getpass(f"Please provide your {var}")
 
-    if llm_response.SOLVABLE:
-        print(f"TASK: {llm_response.TASK}, AGENT: {llm_response.AGENT}, ACTION: {llm_response.ACTION}, SOLVABLE: {llm_response.SOLVABLE}")
-        action_value = llm_response.ACTION.split("(")[0].strip()
-        agent_name = llm_response.AGENT
-        if action_value == "move":
-            coordinates_str = llm_response.ACTION.split("(")[1].split(")")[0]
-            x, y = map(int, coordinates_str.split(","))
-            coordinates = (x, y)
-            for agent in agents:
-                if agent.name == agent_name:
-                    agent.setGoal(my_map, coordinates)
 
-        if action_value == "grab":
-            for agent in agents:
-                if agent.name == agent_name:
-                    for obj in objs:
-                        if agent.position == obj[1]:
-                            agent.grip_object(obj)
-                            if obj[3] == 0:
-                                objs.remove(obj)
+_set_if_undefined("OPENAI_API_KEY")
+_set_if_undefined("LANGCHAIN_API_KEY")
+_set_if_undefined("TAVILY_API_KEY")
 
-        if action_value == "change_status":
-            status = llm_response.ACTION.split("(")[1].split(")")[0]
-            for agent in agents:
-                if agent.name == agent_name:
-                    agent.set_status(my_map, status)
-
-    else:
-        print("This request is not solvable for the agents operating in a 2D environment")
+# Optional, add tracing in LangSmith
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "ReAct"
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.INFO)
     # define map size
     x = 10
     y = 10
@@ -67,15 +47,13 @@ if __name__ == '__main__':
     corner_BL = (0, 0)
     corner_BR = (map_size[0] - 1, 0)
 
-    # define agents:  ('name', placement: (x,y), 'color', Property, inventory)
-    R1 = Agent("R2D2", (6, 6), "blue", "gripper", None)
-    R2 = Agent("C3PO", (6, 9), "yellow", "gripper", None)
-    agents = [R1, R2]
-
     # define object in map:  ('name', placement: (x,y), 'color', number_on_location)
     obj1 = ["Apple", corner_UR, "red", 2]
-    obj2 = ["Orange", corner_UL, "orange", 1]
+    obj2 = ["liquid spill", (5, 4), "orange", 1]
     objs = [obj1, obj2]
+    config.objs = objs
+
+    "Move Robot2 to location (5, 4) and remove the liquid spill."
 
     # define idle stations in map: (placement: (x,y), 'color', status: 'free')
     idle1 = [(corner_UR[0] + 1, corner_UR[1] + 0), "green", "free"]
@@ -101,39 +79,68 @@ if __name__ == '__main__':
     ]
 
     # initialize map with given properties:  (width, heigth, object_list, agent_list)
-    my_map = SimpleMapGenerator(map_size).generate(objs, agents, idle_stations, idle_edges)
+    my_map = SimpleMapGenerator(map_size).generate(objs, robots, idle_stations, idle_edges)
+    config.my_map = my_map
 
     # show environment
     step = 0
-    my_map.showMap(step, objs, agents, idle_stations)
+    my_map.showMap(step, objs, robots, idle_stations)
 
-    openai_model="gpt-4-0613"
-    llm = OPENAI_llm(API_key=keys.OPENAI_api_key, temperature=0.01, OPENAI_model=openai_model)
-    # python_handler(llm_response=llm.llm_test(), my_map=my_map, agents=agents, objs=objs)
+    # initiate LLM
+    llm = ReAct_model()
 
-    R1.setGoal(my_map, R1.position)
-    R2.setGoal(my_map, R2.position)
-    while True:
-        step += 1
-        if step == 2:
-            python_handler(llm_response=llm.llm_test("R2D2 move to (4, 4)"), my_map=my_map, agents=agents, objs=objs)
-        #     R1.setGoal(my_map, (4, 4))
-        if step == 8:
-            python_handler(llm_response=llm.llm_test("C3PO move to (6, 6)"), my_map=my_map, agents=agents, objs=objs)
-        #     R2.setGoal(my_map, (6, 6))
-        if keyboard.is_pressed('esc'):
-            break
-        elif keyboard.is_pressed("enter"):
-            python_handler(llm_response=llm.llm_test(), my_map=my_map, agents=agents, objs=objs)
+    async def main_loop():
+        step = 0
+        while True:
+            step += 1
+            for obj in objs:
+                if obj[3] == 0:
+                    objs.remove(obj)
+            config.objs = objs
 
-        my_map.move_all(agents, idle_stations)
-        # print(f"distance from {R1.name} to {R1.goal}: {dist_func(R1.position, R1.goal)}")
+            # Update map
+            my_map.move_all(robots, idle_stations)
+            config.my_map = my_map
 
-        # # makes the robot go back to initial position
-        # for agent in agents:
-        #     if agent.position == agent.goal:
-        #         agent.setGoal(my_map, agent.initial_position)
-        my_map.showMap(step, objs, agents, idle_stations)
+            # Display updated map
+            my_map.showMap(step, objs, robots, idle_stations)
+
+            await asyncio.sleep(0.1)  # Add a small delay to avoid maxing out CPU
+
+
+    def handle_keyboard_input(loop):
+        while True:
+            if keyboard.is_pressed("esc"):
+                print("ESC pressed, stopping the program.")
+                loop.call_soon_threadsafe(loop.stop)
+                break
+            elif keyboard.is_pressed("page up"):
+                print("ENTER pressed, running the model.")
+                # Schedule the llm.run() coroutine to be run in the event loop
+                asyncio.run_coroutine_threadsafe(llm.run(), loop)
+            time.sleep(0.1)  # Use time.sleep for synchronous sleep in the thread
+
+
+    # Get the current event loop
+    loop = asyncio.get_event_loop()
+
+    # Create a separate thread for handling keyboard inputs
+    keyboard_thread = threading.Thread(target=handle_keyboard_input, args=(loop,))
+    keyboard_thread.start()
+
+    # Run the main loop in the event loop
+    loop.run_until_complete(main_loop())
+
+    # Without join, the program might exit here before the keyboard thread completes.
+    keyboard_thread.join()
+
+            # print(f"distance from {R1.name} to {R1.goal}: {dist_func(R1.position, R1.goal)}")
+
+            # # makes the robot go back to initial position
+            # for agent in agents:
+            #     if agent.position == agent.goal:
+            #         agent.setGoal(my_map, agent.initial_position)
+
 
 
 

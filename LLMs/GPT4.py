@@ -1,5 +1,5 @@
 from langchain.chat_models import ChatOpenAI
-from langchain.prompts.chat import ChatPromptTemplate, SystemMessage, HumanMessagePromptTemplate
+from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from pydantic import BaseModel, Field
 from langchain.output_parsers import PydanticOutputParser
 from typing import Optional
@@ -30,6 +30,7 @@ class OPENAI_llm(object):
         These are the following actions the agent can make:
         - move(x, y) which moves the robot to position (x, y)
         - grab which makes the robot grab an object at it's current location
+        - place(item) which makes the robot place the item at it's current location
         - change_status(status) changes the status of the agent 
 
         Here are some examples of the task and response:
@@ -45,6 +46,9 @@ class OPENAI_llm(object):
         
         Task = R2D2 grab object
         response = TASK: grab object AGENT: R2D2 ACTION: grab() SOLVABLE: True
+        
+        Task = R2D2 place object apple
+        response = TASK: place object apple AGENT: R2D2 ACTION: place(apple) SOLVABLE: True
         
         task = what is the capital of france?
         response = SOLVABLE: False

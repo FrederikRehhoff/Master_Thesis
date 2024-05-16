@@ -102,6 +102,9 @@ class Map(object):
         colors = []
         labels = {}
 
+        # Clear the current axes
+        plt.cla()
+
         for obj in objs:
             self._graph.nodes[obj[1]]["label"] = obj[0] + " x " + str(obj[3])
             self._graph.nodes[obj[1]]["color"] = obj[2]
@@ -143,5 +146,66 @@ class Map(object):
         plt.title(f"Step {step}")
         plt.draw()
         plt.show(block=False)
-        plt.pause(0.1)
-        plt.waitforbuttonpress()
+        plt.pause(1)
+        # plt.waitforbuttonpress()
+
+    # def showMap(self, step, objs=None, agents=None, idle_stations=None):
+    #     if agents is None:
+    #         agents = []
+    #     if objs is None:
+    #         objs = []
+    #     if idle_stations is None:
+    #         idle_stations = []
+    #
+    #     colors = []
+    #     labels = {}
+    #
+    #     # Clear the current axes
+    #     plt.cla()
+    #
+    #     # Reset all nodes' labels and colors
+    #     for node in self._graph.nodes:
+    #         self._graph.nodes[node]["label"] = None
+    #         self._graph.nodes[node]["color"] = "white"
+    #
+    #     for obj in objs:
+    #         self._graph.nodes[obj[1]]["label"] = obj[0] + " x " + str(obj[3])
+    #         self._graph.nodes[obj[1]]["color"] = obj[2]
+    #
+    #     for station in idle_stations:
+    #         if self._graph.nodes[station[0]]["label"] == "free":
+    #             self._graph.nodes[station[0]]["label"] = station[2]
+    #             self._graph.nodes[station[0]]["color"] = station[1]
+    #         elif self._graph.nodes[station[0]]["label"] is None:
+    #             self._graph.nodes[station[0]]["label"] = station[2]
+    #             self._graph.nodes[station[0]]["color"] = station[1]
+    #         else:
+    #             self._graph.nodes[station[0]]["label"] = "reserved"
+    #             self._graph.nodes[station[0]]["color"] = "red"
+    #
+    #     for agent in agents:
+    #         self._graph.nodes[agent.position]["label"] = agent.name
+    #         self._graph.nodes[agent.position]["color"] = agent.color
+    #         self._graph.nodes[agent.position]["inventory"] = agent.inventory
+    #
+    #     for i in self._graph.nodes:
+    #         node = self._graph.nodes[i]
+    #         colors.append(node["color"])
+    #
+    #     for node in nx.nodes(self._graph):
+    #         if self._graph.nodes[node]["label"] is not None:
+    #             labels[node] = self._graph.nodes[node]["label"]
+    #
+    #     pos = {n: (n[0] * 10, n[1] * 10) for n in nx.nodes(self._graph)}
+    #     nodes_graph = nx.draw_networkx_nodes(self._graph, pos=pos, node_color=colors,
+    #                                          node_size=800, node_shape="s", linewidths=1.0)
+    #     nodes_edges = nx.draw_networkx_edges(self._graph, pos=pos)
+    #
+    #     nx.draw_networkx_labels(self._graph, pos, labels, font_size=11, font_color="black")
+    #     nodes_graph.set_edgecolor('black')
+    #
+    #     plt.title(f"Step {step}")
+    #     plt.draw()
+    #     plt.show(block=False)
+    #     plt.pause(1)
+    #     # plt.waitforbuttonpress()

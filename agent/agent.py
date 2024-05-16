@@ -8,17 +8,17 @@ from map import Map
 
 
 class Agent(object):
-    def __init__(self, name, position, color, property, inventory):
+    def __init__(self, name, position, color, tool_property, inventory, status="idle"):
         self._name = name
         self._position = position
         self._initial_position = position
         self._color = color
         self._goal = None
         self._station = None
-        self._status = "idle"
+        self._status = status
         self._path = []
         self._path_history = []
-        self._property = property
+        self._tool_property = tool_property
         self._inventory = []
 
     def setGoal(self, my_map, goal):
@@ -61,7 +61,7 @@ class Agent(object):
         elif self._status == "idle":
             self.move_to_station(my_map, idle_stations)
 
-        print(f"agent: {self._name}, pos: {self._position}, station: {self._station}, Status: {self._status}")
+        # print(f"agent: {self._name}, pos: {self._position}, station: {self._station}, Status: {self._status}")
 
     def move_to_station(self, my_map, idle_stations=None):
         if idle_stations is None:
@@ -95,12 +95,20 @@ class Agent(object):
             # print(f"path: {self._path}")
             self.next_move(my_map)
 
+    def add_item_inventory(self, item):
+        self._inventory.append(item)
+
     def grip_object(self, obj, quantity=1):
-        if self._property == "gripper":
+        if self._tool_property == "gripper":
             self._inventory.append(obj[0])
             obj[3] -= quantity
         else:
             print("agent is not equipped with a gripper")
+
+    # def place_object(self, obj, quantity=1):
+    #     for item in self.inventory:
+    #         if item == obj:
+    #             objs.append
 
     def set_status(self, my_map, status="idle"):
         if status in ["idle", "active", "charging"]:
@@ -119,6 +127,15 @@ class Agent(object):
         y_dist = abs(target_pos[1] - self._position[1])
         total_dist = x_dist + y_dist
         return total_dist
+
+    @property
+    def tool_property(self) -> str:
+        """agent tool i.e gripper"""
+        return self._tool_property
+
+    @tool_property.setter
+    def tool_property(self, new_tool):
+        self._tool_property = new_tool
 
     @property
     def inventory(self) -> list:
